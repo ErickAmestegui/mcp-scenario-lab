@@ -6,6 +6,8 @@ An MCP tool can return successfully while leaving the wrong state behind. This s
 
 This is an independent MIT open source contribution developed alongside [FixPilot X](https://github.com/ErickAmestegui/fixpilot-x). It is **not an official MCP conformance certifier**, Alexa integration, or Amazon product.
 
+Public repository: https://github.com/ErickAmestegui/mcp-scenario-lab . Implementation checkpoint: [`v0.1.0`](https://github.com/ErickAmestegui/mcp-scenario-lab/tree/v0.1.0). The [Ubuntu / Node 22 CI run](https://github.com/ErickAmestegui/mcp-scenario-lab/actions/runs/39310007278) passed at that checkpoint. [Open Source submission fields](docs/OPEN_SOURCE_SUBMISSION.md) describe the separate contribution and its limits; they do not represent a submitted Devpost entry.
+
 ## Quick start
 
 Requires Node.js 22+ and npm. No account, API key or paid service.
