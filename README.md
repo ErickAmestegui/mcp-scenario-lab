@@ -118,8 +118,8 @@ MIT license; dependencies retain their own licenses. No proprietary assets or Fi
 
 ## Verified evidence
 
-On October 19, 2026, all **14 automated tests passed** on Windows with Node.js 24.16.0. The repository configures a Node.js 22 Ubuntu workflow; a configured workflow alone is not a claim that CI has run.
+On October 19, 2026, all **15 automated tests passed** on Windows with Node.js 24.16.0. The repository configures a Node.js 22 Ubuntu workflow; a configured workflow alone is not a claim that CI has run.
 
 The [independent inventory report](docs/evidence/inventory.md) records six real calls and negotiated protocol `2025-11-25`. The [optional FixPilot B7 report](docs/evidence/fixpilot-b7.md) records seven real calls against FixPilot X's actual MCP server, including retained confirmations `[1, 2, 6]` after B7 recovery. Both sessions terminated through HTTP DELETE. JSON equivalents are stored beside the Markdown reports. Random loopback ports in those historical reports identify the test sessions and are not hosted endpoints.
 
-Tests cover real HTTP initialization/discovery, stock mutation, expected tool and JSON-RPC errors, incorrect-state failures, stop-on-first-failure, missing discovery entries, session isolation, timeout classification, unavailable endpoints, HTTP DELETE failure, allowed HTTP 405 termination policy, and CLI report output. The fixture models in-session retention; durable restart persistence and native Alexa access were not tested or claimed.
+Tests cover real HTTP initialization/discovery with both JSON and SSE responses, stock mutation, expected tool and JSON-RPC errors, incorrect-state failures, stop-on-first-failure, missing discovery entries, session isolation, timeout classification, unavailable endpoints, HTTP DELETE failure, allowed HTTP 405 termination policy, and CLI report output. SSE bodies are consumed only by the official SDK; the runner observes the negotiated protocol from subsequent SDK request headers. The fixture models in-session retention; durable restart persistence and native Alexa access were not tested or claimed.

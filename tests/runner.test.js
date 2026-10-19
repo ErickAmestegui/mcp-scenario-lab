@@ -56,6 +56,18 @@ test('failed state expectation halts before another mutating call and still term
     assert.equal(report.cleanup, 'session-terminated');
   });
 });
+test('real SSE initialization, discovery and stateful calls do not await stream completion', async () => {
+  const server = await startFixture(0, { enableJsonResponse: false });
+  try {
+    const report = await runScenario(scenario, { endpoint: server.url, timeoutMs: 2000 });
+    assert.equal(report.passed, true, JSON.stringify(report));
+    assert.equal(report.initialization.protocolVersion, '2025-11-25');
+    assert.equal(report.steps.length, 6);
+    assert.equal(report.cleanup, 'session-terminated');
+    assert.equal(server.metrics.calls, 6);
+    assert.equal(server.metrics.terminated, 1);
+  } finally { await server.close(); }
+});
 test('unexpected tool error fails; expected SDK validation tool error passes', async () => {
   await againstFixture(async server => {
     assert.equal((await runScenario(one({ tool: 'inventory_take', arguments: { amount: 99 } }), { endpoint: server.url })).passed, false);

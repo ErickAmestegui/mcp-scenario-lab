@@ -7,7 +7,7 @@ import { isInitializeRequest, CallToolRequestSchema, McpError, ErrorCode } from 
 import { z } from 'zod';
 
 /** Independent, in-memory per-session inventory fixture. Not a production service. */
-export async function startFixture(port = 0, { protocolError = false, rejectDelete = false } = {}) {
+export async function startFixture(port = 0, { protocolError = false, rejectDelete = false, enableJsonResponse = true } = {}) {
   const app = express();
   const sessions = new Map();
   const metrics = { initialized: 0, terminated: 0, calls: 0 };
@@ -40,7 +40,7 @@ export async function startFixture(port = 0, { protocolError = false, rejectDele
         server.registerTool('inventory_restock', { inputSchema: { amount: z.number().int().positive() } }, async ({ amount }) => { metrics.calls++; quantity += amount; counter++; return reply(); });
         server.registerTool('fixture_slow', { inputSchema: { milliseconds: z.number().int().min(1).max(1000) } }, async ({ milliseconds }) => { await new Promise(resolve => setTimeout(resolve, milliseconds)); return reply(); });
         if (protocolError) server.server.setRequestHandler(CallToolRequestSchema, async () => { throw new McpError(ErrorCode.InvalidParams, 'Intentional fixture JSON-RPC rejection'); });
-        const transport = new StreamableHTTPServerTransport({ sessionIdGenerator: () => randomUUID(), enableJsonResponse: true, onsessioninitialized: sid => { sessions.set(sid, { server, transport }); metrics.initialized++; } });
+        const transport = new StreamableHTTPServerTransport({ sessionIdGenerator: () => randomUUID(), enableJsonResponse, onsessioninitialized: sid => { sessions.set(sid, { server, transport }); metrics.initialized++; } });
         transport.onclose = () => { if (transport.sessionId && sessions.delete(transport.sessionId)) metrics.terminated++; };
         await server.connect(transport);
         session = { server, transport };

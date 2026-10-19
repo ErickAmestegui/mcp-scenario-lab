@@ -68,7 +68,9 @@ export async function runScenario(scenario, options = {}) {
     fetch: async (input, init) => {
       const response = await fetch(input, { ...init, redirect: 'error', signal: init?.signal ? AbortSignal.any([init.signal, AbortSignal.timeout(timeout)]) : AbortSignal.timeout(timeout) });
       if (init?.method === 'DELETE') terminationStatus = response.status;
-      if (init?.method === 'POST') {
+      // Never read an SSE clone to completion: event streams may remain open indefinitely.
+      // The SDK consumes SSE, and its subsequent requests expose the negotiated version.
+      if (init?.method === 'POST' && response.headers.get('content-type')?.split(';', 1)[0].trim().toLowerCase() === 'application/json') {
         try { const body = await response.clone().json(); if (body.result?.protocolVersion) negotiated = body.result.protocolVersion; } catch { /* SSE initialization may be used; header below records later negotiated traffic. */ }
       }
       const version = new Headers(init?.headers).get('mcp-protocol-version');
