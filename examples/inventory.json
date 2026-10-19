@@ -1,0 +1,14 @@
+{
+  "version": 1,
+  "name": "Inventory mutation, rejected withdrawal, and recovery",
+  "endpoint": "http://127.0.0.1:3102/mcp",
+  "requiredTools": ["inventory_read", "inventory_take", "inventory_restock"],
+  "steps": [
+    { "id": "initial", "tool": "inventory_read", "assertions": [{ "path": "/structuredContent/quantity", "op": "equals", "value": 3 }] },
+    { "id": "take-two", "tool": "inventory_take", "arguments": { "amount": 2 }, "assertions": [{ "path": "/structuredContent/quantity", "op": "equals", "value": 1 }] },
+    { "id": "reject-overdraw", "tool": "inventory_take", "arguments": { "amount": 9 }, "expectError": "tool", "assertions": [{ "path": "/structuredContent/quantity", "op": "equals", "value": 1 }] },
+    { "id": "state-retained", "tool": "inventory_read", "assertions": [{ "path": "/structuredContent/counter", "op": "equals", "value": 1 }, { "path": "/structuredContent/quantity", "op": "equals", "value": 1 }] },
+    { "id": "restock", "tool": "inventory_restock", "arguments": { "amount": 4 }, "assertions": [{ "path": "/structuredContent/quantity", "op": "equals", "value": 5 }] },
+    { "id": "retained-recovery", "tool": "inventory_read", "assertions": [{ "path": "/structuredContent/counter", "op": "equals", "value": 2 }, { "path": "/structuredContent/quantity", "op": "equals", "value": 5 }] }
+  ]
+}

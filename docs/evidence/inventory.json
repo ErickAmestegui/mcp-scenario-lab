@@ -1,0 +1,114 @@
+{
+  "formatVersion": 1,
+  "scenario": "Inventory mutation, rejected withdrawal, and recovery",
+  "startedAt": "2026-10-19T19:15:59.753Z",
+  "endpoint": "http://127.0.0.1:61870/mcp",
+  "passed": true,
+  "initialization": {
+    "protocolVersion": "2025-11-25",
+    "server": {
+      "name": "scenario-lab-inventory-fixture",
+      "version": "0.1.0"
+    },
+    "transport": "Streamable HTTP"
+  },
+  "tools": [
+    "fixture_slow",
+    "inventory_read",
+    "inventory_restock",
+    "inventory_take"
+  ],
+  "steps": [
+    {
+      "id": "initial",
+      "tool": "inventory_read",
+      "passed": true,
+      "outcome": "success",
+      "assertions": [
+        {
+          "path": "/structuredContent/quantity",
+          "op": "equals",
+          "passed": true
+        }
+      ]
+    },
+    {
+      "id": "take-two",
+      "tool": "inventory_take",
+      "passed": true,
+      "outcome": "success",
+      "assertions": [
+        {
+          "path": "/structuredContent/quantity",
+          "op": "equals",
+          "passed": true
+        }
+      ]
+    },
+    {
+      "id": "reject-overdraw",
+      "tool": "inventory_take",
+      "passed": true,
+      "outcome": "tool-error",
+      "assertions": [
+        {
+          "path": "/structuredContent/quantity",
+          "op": "equals",
+          "passed": true
+        }
+      ]
+    },
+    {
+      "id": "state-retained",
+      "tool": "inventory_read",
+      "passed": true,
+      "outcome": "success",
+      "assertions": [
+        {
+          "path": "/structuredContent/counter",
+          "op": "equals",
+          "passed": true
+        },
+        {
+          "path": "/structuredContent/quantity",
+          "op": "equals",
+          "passed": true
+        }
+      ]
+    },
+    {
+      "id": "restock",
+      "tool": "inventory_restock",
+      "passed": true,
+      "outcome": "success",
+      "assertions": [
+        {
+          "path": "/structuredContent/quantity",
+          "op": "equals",
+          "passed": true
+        }
+      ]
+    },
+    {
+      "id": "retained-recovery",
+      "tool": "inventory_read",
+      "passed": true,
+      "outcome": "success",
+      "assertions": [
+        {
+          "path": "/structuredContent/counter",
+          "op": "equals",
+          "passed": true
+        },
+        {
+          "path": "/structuredContent/quantity",
+          "op": "equals",
+          "passed": true
+        }
+      ]
+    }
+  ],
+  "cleanup": "session-terminated",
+  "errors": [],
+  "finishedAt": "2026-10-19T19:15:59.932Z"
+}

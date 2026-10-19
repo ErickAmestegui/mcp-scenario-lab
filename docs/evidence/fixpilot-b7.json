@@ -1,0 +1,136 @@
+{
+  "formatVersion": 1,
+  "scenario": "FixPilot B7 missing, independent progress, and recovery",
+  "startedAt": "2026-10-19T19:14:35.084Z",
+  "endpoint": "http://127.0.0.1:55280/mcp",
+  "passed": true,
+  "initialization": {
+    "protocolVersion": "2025-11-25",
+    "server": {
+      "name": "fixpilot-x",
+      "version": "1.0.0"
+    },
+    "transport": "Streamable HTTP"
+  },
+  "tools": [
+    "complete_step",
+    "explain_blockage",
+    "explain_part_impact",
+    "focus_3d_part",
+    "get_assembly_state",
+    "get_available_steps",
+    "get_safety_requirements",
+    "inspect_part",
+    "list_parts",
+    "load_assembly",
+    "mark_part_missing",
+    "recalculate_plan",
+    "restore_part",
+    "restore_progress",
+    "save_progress",
+    "select_step",
+    "set_tool_available",
+    "undo_step"
+  ],
+  "steps": [
+    {
+      "id": "load-table",
+      "tool": "load_assembly",
+      "passed": true,
+      "outcome": "success",
+      "assertions": [
+        {
+          "path": "/structuredContent/state/completed",
+          "op": "equals",
+          "passed": true
+        }
+      ]
+    },
+    {
+      "id": "base-confirmation",
+      "tool": "complete_step",
+      "passed": true,
+      "outcome": "success",
+      "assertions": [
+        {
+          "path": "/structuredContent/state/completed",
+          "op": "includes",
+          "passed": true
+        }
+      ]
+    },
+    {
+      "id": "panels-confirmation",
+      "tool": "complete_step",
+      "passed": true,
+      "outcome": "success",
+      "assertions": [
+        {
+          "path": "/structuredContent/state/completed",
+          "op": "includes",
+          "passed": true
+        }
+      ]
+    },
+    {
+      "id": "report-missing",
+      "tool": "mark_part_missing",
+      "passed": true,
+      "outcome": "success",
+      "assertions": [
+        {
+          "path": "/structuredContent/state/missing",
+          "op": "includes",
+          "passed": true
+        }
+      ]
+    },
+    {
+      "id": "missing-state-retained",
+      "tool": "get_assembly_state",
+      "passed": true,
+      "outcome": "success",
+      "assertions": [
+        {
+          "path": "/structuredContent/state/missing",
+          "op": "equals",
+          "passed": true
+        }
+      ]
+    },
+    {
+      "id": "independent-feet",
+      "tool": "complete_step",
+      "passed": true,
+      "outcome": "success",
+      "assertions": [
+        {
+          "path": "/structuredContent/state/completed",
+          "op": "equals",
+          "passed": true
+        }
+      ]
+    },
+    {
+      "id": "recover-b7",
+      "tool": "restore_part",
+      "passed": true,
+      "outcome": "success",
+      "assertions": [
+        {
+          "path": "/structuredContent/state/missing",
+          "op": "equals",
+          "passed": true
+        },
+        {
+          "path": "/structuredContent/state/completed",
+          "op": "equals",
+          "passed": true
+        }
+      ]
+    }
+  ],
+  "cleanup": "session-terminated",
+  "errors": [],
+  "finishedAt": "2026-10-19T19:14:37.411Z"
+}

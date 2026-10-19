@@ -1,0 +1,15 @@
+{
+  "version": 1,
+  "name": "FixPilot B7 missing, independent progress, and recovery",
+  "endpoint": "http://127.0.0.1:3101/mcp",
+  "requiredTools": ["load_assembly", "complete_step", "mark_part_missing", "get_assembly_state", "restore_part"],
+  "steps": [
+    { "id": "load-table", "tool": "load_assembly", "arguments": { "assemblyId": "table" }, "assertions": [{ "path": "/structuredContent/state/completed", "op": "equals", "value": [] }] },
+    { "id": "base-confirmation", "tool": "complete_step", "arguments": { "stepId": 1, "confirmed": true }, "assertions": [{ "path": "/structuredContent/state/completed", "op": "includes", "value": 1 }] },
+    { "id": "panels-confirmation", "tool": "complete_step", "arguments": { "stepId": 2, "confirmed": true }, "assertions": [{ "path": "/structuredContent/state/completed", "op": "includes", "value": 2 }] },
+    { "id": "report-missing", "tool": "mark_part_missing", "arguments": { "partId": "B7" }, "assertions": [{ "path": "/structuredContent/state/missing", "op": "includes", "value": "B7" }] },
+    { "id": "missing-state-retained", "tool": "get_assembly_state", "assertions": [{ "path": "/structuredContent/state/missing", "op": "equals", "value": ["B7"] }] },
+    { "id": "independent-feet", "tool": "complete_step", "arguments": { "stepId": 6, "confirmed": true }, "assertions": [{ "path": "/structuredContent/state/completed", "op": "equals", "value": [1, 2, 6] }] },
+    { "id": "recover-b7", "tool": "restore_part", "arguments": { "partId": "B7" }, "assertions": [{ "path": "/structuredContent/state/missing", "op": "equals", "value": [] }, { "path": "/structuredContent/state/completed", "op": "equals", "value": [1, 2, 6] }] }
+  ]
+}

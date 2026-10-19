@@ -1,0 +1,11 @@
+{
+  "name": "mcp-scenario-lab",
+  "version": "0.1.0",
+  "description": "Reproducible stateful scenarios for MCP Streamable HTTP servers",
+  "type": "module",
+  "engines": { "node": ">=22" },
+  "bin": { "mcp-scenario-lab": "src/cli.js" },
+  "scripts": { "test": "node --test", "fixture": "node examples/fixture-server.js", "demo": "node src/cli.js examples/inventory.json --out reports/inventory" },
+  "dependencies": { "@modelcontextprotocol/sdk": "1.32.1", "express": "5.1.0", "zod": "3.25.76" },
+  "license": "MIT"
+}
