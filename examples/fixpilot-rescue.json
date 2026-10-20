@@ -1,0 +1,65 @@
+{
+  "version": 1,
+  "name": "FixPilot Rescue Intelligence: preview, compare, explicitly apply, partially recover",
+  "endpoint": "http://127.0.0.1:3101/mcp",
+  "requiredTools": ["load_assembly", "complete_step", "get_assembly_state", "preview_scenario", "compare_scenarios", "explain_recovery", "apply_scenario"],
+  "steps": [
+    { "id": "load-table", "tool": "load_assembly", "arguments": { "assemblyId": "table" }, "assertions": [{ "path": "/structuredContent/state/completed", "op": "equals", "value": [] }] },
+    { "id": "confirm-base", "tool": "complete_step", "arguments": { "stepId": 1, "confirmed": true } },
+    { "id": "confirm-panels", "tool": "complete_step", "arguments": { "stepId": 2, "confirmed": true }, "assertions": [{ "path": "/structuredContent/state/completed", "op": "equals", "value": [1, 2] }] },
+    {
+      "id": "preview-double-loss", "tool": "preview_scenario", "arguments": { "changes": { "missingParts": ["B7"], "unavailableTools": ["hex"] } },
+      "capture": { "doubleLossBase": "/structuredContent/data/baseToken" },
+      "assertions": [
+        { "path": "/structuredContent/state/missing", "op": "equals", "value": [] },
+        { "path": "/structuredContent/state/missingTools", "op": "equals", "value": [] },
+        { "path": "/structuredContent/state/completed", "op": "equals", "value": [1, 2] },
+        { "path": "/structuredContent/data/hypothetical/missing", "op": "equals", "value": ["B7"] },
+        { "path": "/structuredContent/data/hypothetical/missingTools", "op": "equals", "value": ["hex"] },
+        { "path": "/structuredContent/data/available", "op": "equals", "value": [6] },
+        { "path": "/structuredContent/data/blocked", "op": "equals", "value": [3, 4, 5, 7, 8] }
+      ]
+    },
+    {
+      "id": "compare-independent-scenarios", "tool": "compare_scenarios",
+      "arguments": { "scenarios": [{ "id": "part-only", "changes": { "missingParts": ["B7"] } }, { "id": "double-loss", "changes": { "missingParts": ["B7"], "unavailableTools": ["hex"] } }] },
+      "assertions": [
+        { "path": "/structuredContent/state/missing", "op": "equals", "value": [] },
+        { "path": "/structuredContent/data/scenarios/0/available", "op": "equals", "value": [3, 6] },
+        { "path": "/structuredContent/data/scenarios/1/available", "op": "equals", "value": [6] },
+        { "path": "/structuredContent/data/pairs/0/onlyLeftAvailable", "op": "equals", "value": [3] }
+      ]
+    },
+    {
+      "id": "explicitly-apply-double-loss", "tool": "apply_scenario",
+      "arguments": { "changes": { "missingParts": ["B7"], "unavailableTools": ["hex"] }, "baseToken": { "$var": "doubleLossBase" }, "confirmed": true },
+      "assertions": [{ "path": "/structuredContent/data/applied", "op": "equals", "value": true }, { "path": "/structuredContent/state/completed", "op": "equals", "value": [1, 2] }]
+    },
+    {
+      "id": "explain-resource-recovery", "tool": "explain_recovery",
+      "assertions": [
+        { "path": "/structuredContent/data/resources", "op": "includes", "value": { "kind": "part", "id": "B7", "steps": [4] } },
+        { "path": "/structuredContent/data/resources", "op": "includes", "value": { "kind": "tool", "id": "hex", "steps": [3, 4, 5] } },
+        { "path": "/structuredContent/data/requiresHumanVerification", "op": "equals", "value": true }
+      ]
+    },
+    {
+      "id": "preview-partial-recovery", "tool": "preview_scenario", "arguments": { "changes": { "recoveredParts": ["B7"] } },
+      "capture": { "partialRecoveryBase": "/structuredContent/data/baseToken" },
+      "assertions": [{ "path": "/structuredContent/state/missing", "op": "equals", "value": ["B7"] }, { "path": "/structuredContent/data/hypothetical/missing", "op": "equals", "value": [] }, { "path": "/structuredContent/data/hypothetical/missingTools", "op": "equals", "value": ["hex"] }, { "path": "/structuredContent/data/available", "op": "equals", "value": [6] }]
+    },
+    {
+      "id": "explicitly-apply-partial-recovery", "tool": "apply_scenario",
+      "arguments": { "changes": { "recoveredParts": ["B7"] }, "baseToken": { "$var": "partialRecoveryBase" }, "confirmed": true },
+      "assertions": [{ "path": "/structuredContent/state/missing", "op": "equals", "value": [] }, { "path": "/structuredContent/state/missingTools", "op": "equals", "value": ["hex"] }]
+    },
+    { "id": "independent-feet-confirmation", "tool": "complete_step", "arguments": { "stepId": 6, "confirmed": true }, "assertions": [{ "path": "/structuredContent/state/completed", "op": "equals", "value": [1, 2, 6] }] },
+    {
+      "id": "preview-tool-recovery", "tool": "preview_scenario", "arguments": { "changes": { "recoveredTools": ["hex"] } },
+      "capture": { "toolRecoveryBase": "/structuredContent/data/baseToken" },
+      "assertions": [{ "path": "/structuredContent/state/missingTools", "op": "equals", "value": ["hex"] }, { "path": "/structuredContent/data/available", "op": "equals", "value": [3, 4] }]
+    },
+    { "id": "explicitly-apply-tool-recovery", "tool": "apply_scenario", "arguments": { "changes": { "recoveredTools": ["hex"] }, "baseToken": { "$var": "toolRecoveryBase" }, "confirmed": true }, "assertions": [{ "path": "/structuredContent/data/applied", "op": "equals", "value": true }] },
+    { "id": "retained-progress-and-inventory", "tool": "get_assembly_state", "assertions": [{ "path": "/structuredContent/state/completed", "op": "equals", "value": [1, 2, 6] }, { "path": "/structuredContent/state/missing", "op": "equals", "value": [] }, { "path": "/structuredContent/state/missingTools", "op": "equals", "value": [] }] }
+  ]
+}

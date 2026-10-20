@@ -145,3 +145,86 @@ test('CLI writes machine and human reports and returns documented exit code', as
     } finally { await rm(dir, { recursive: true, force: true }); }
   });
 });
+
+test('generic captures reuse live inventory quantities over real MCP without recording values', async () => {
+  await againstFixture(async server => {
+    const source = { version: 1, name: 'capture-reuse', steps: [
+      { id: 'read', tool: 'inventory_read', capture: { liveQuantity: '/structuredContent/quantity', privateLabel: '/structuredContent/item' } },
+      { id: 'take-current', tool: 'inventory_take', arguments: { amount: { $var: 'liveQuantity' } }, assertions: [{ path: '/structuredContent/quantity', op: 'equals', value: 0 }] },
+      { id: 'restore-original', tool: 'inventory_restock', arguments: { amount: { $var: 'liveQuantity' } }, assertions: [{ path: '/structuredContent/quantity', op: 'equals', value: 3 }] },
+    ] };
+    const original = structuredClone(source);
+    const report = await runScenario(source, { endpoint: server.url });
+    assert.equal(report.passed, true, JSON.stringify(report));
+    assert.equal(server.metrics.calls, 3);
+    assert.deepEqual(source, original);
+    assert.doesNotMatch(JSON.stringify(report) + markdownReport(report), /washer|privateLabel|liveQuantity|\$var/);
+  });
+});
+
+test('missing capture stops before dependent inventory mutation and still cleans up', async () => {
+  await againstFixture(async server => {
+    const report = await runScenario({ version: 1, name: 'missing-capture', steps: [
+      { id: 'read', tool: 'inventory_read', capture: { amount: '/structuredContent/notPresent' } },
+      { id: 'take', tool: 'inventory_take', arguments: { amount: { $var: 'amount' } } },
+    ] }, { endpoint: server.url });
+    assert.equal(report.passed, false);
+    assert.equal(report.steps[0].outcome, 'capture-error');
+    assert.equal(report.steps.length, 1);
+    assert.equal(server.metrics.calls, 1);
+    assert.equal(report.cleanup, 'session-terminated');
+  });
+});
+
+test('capture validation rejects missing/forward references, overwrites, unsafe names and ambiguous markers', () => {
+  const read = { id: 'read', tool: 'inventory_read', capture: { count: '/structuredContent/quantity' } };
+  const make = steps => ({ version: 1, name: 'invalid-capture', steps });
+  assert.throws(() => validateScenario(make([{ id: 'use', tool: 'inventory_take', arguments: { nested: [{ $var: 'count' }] } }, read])), /earlier step/);
+  assert.throws(() => validateScenario(make([read, { ...read, id: 'again' }])), /unique/);
+  assert.throws(() => validateScenario(make([{ ...read, capture: { constructor: '' } }])), /safe identifiers/);
+  assert.throws(() => validateScenario(make([{ ...read, capture: JSON.parse('{"__proto__":""}') }])), /safe identifiers/);
+  assert.throws(() => validateScenario(make([{ ...read, capture: { count: '/bad~2' } }])));
+  assert.throws(() => validateScenario(make([read, { id: 'use', tool: 'x', arguments: { x: { $var: 'count', extra: true } } }])), /Invalid variable/);
+  assert.throws(() => validateScenario(make([{ id: 'read', tool: 'x', arguments: { tooLarge: 'x'.repeat(65537) } }])), /size limit/);
+  let nested = 1; for (let index = 0; index < 34; index++) nested = [nested];
+  assert.throws(() => validateScenario(make([{ id: 'read', tool: 'x', arguments: { nested } }])), /complexity/);
+});
+
+test('captured structured values resolve recursively as literal JSON and remain session-local', async () => {
+  await againstFixture(async server => {
+    const source = { version: 1, name: 'structured-capture', steps: [
+      { id: 'read', tool: 'inventory_read', capture: { result: '/structuredContent' } },
+      { id: 'echo-nested', tool: 'fixture_echo', arguments: { payload: { nested: [{ $var: 'result' }] } }, assertions: [{ path: '/structuredContent/echoed/nested/0', op: 'equals', value: { quantity: 3, counter: 0, item: 'washer' } }] },
+    ] };
+    assert.equal((await runScenario(source, { endpoint: server.url })).passed, true);
+    assert.equal((await runScenario(source, { endpoint: server.url })).passed, true);
+    assert.equal(server.metrics.initialized, 2);
+  });
+});
+
+test('captured server data cannot activate a second variable substitution or pollute prototypes', async () => {
+  await againstFixture(async server => {
+    const report = await runScenario({ version: 1, name: 'literal-data', steps: [
+      { id: 'echo', tool: 'fixture_echo', arguments: { payload: JSON.parse('{"__proto__":{"polluted":true}}') }, capture: { literalData: '/structuredContent/echoed', marker: '/structuredContent/marker' } },
+      { id: 'reuse', tool: 'fixture_echo', arguments: { payload: { $var: 'literalData' } }, assertions: [{ path: '/structuredContent/echoed/__proto__/polluted', op: 'equals', value: true }] },
+      { id: 'literal-marker', tool: 'fixture_echo', arguments: { payload: { $var: 'marker' } }, assertions: [{ path: '/structuredContent/echoed', op: 'equals', value: { $var: 'notCaptured' } }] },
+    ] }, { endpoint: server.url });
+    assert.equal(report.passed, true, JSON.stringify(report));
+    assert.equal({}.polluted, undefined);
+  });
+});
+
+test('oversized captured tool result fails before dependent mutation without leaking its payload', async () => {
+  await againstFixture(async server => {
+    const payload = 'private-capture-'.repeat(2500); // 40000 characters; echo duplicates it in the result.
+    const report = await runScenario({ version: 1, name: 'capture-bound', steps: [
+      { id: 'large-result', tool: 'fixture_echo', arguments: { payload }, capture: { wholeResult: '' } },
+      { id: 'must-not-mutate', tool: 'inventory_take', arguments: { amount: 1 } },
+    ] }, { endpoint: server.url });
+    assert.equal(report.passed, false);
+    assert.equal(report.steps[0].outcome, 'capture-error');
+    assert.equal(server.metrics.calls, 1);
+    assert.equal(report.cleanup, 'session-terminated');
+    assert.doesNotMatch(JSON.stringify(report), /private-capture/);
+  });
+});

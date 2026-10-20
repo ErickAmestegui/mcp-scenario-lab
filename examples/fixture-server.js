@@ -30,6 +30,10 @@ export async function startFixture(port = 0, { protocolError = false, rejectDele
         const server = new McpServer({ name: 'scenario-lab-inventory-fixture', version: '0.1.0' });
         const reply = (error = false) => ({ isError: error, content: [{ type: 'text', text: error ? 'Insufficient stock' : 'Inventory state' }], structuredContent: { quantity, counter, item: 'washer' } });
         server.registerTool('inventory_read', { inputSchema: {} }, async () => { metrics.calls++; return reply(); });
+        server.registerTool('fixture_echo', { inputSchema: { payload: z.unknown() } }, async ({ payload }) => {
+          metrics.calls++;
+          return { content: [{ type: 'text', text: 'Fixture echo' }], structuredContent: { echoed: payload, duplicated: payload, marker: { $var: 'notCaptured' } } };
+        });
         server.registerTool('inventory_take', { inputSchema: { amount: z.number().int().positive() } }, async ({ amount }) => {
           metrics.calls++;
           if (amount > quantity) return reply(true);

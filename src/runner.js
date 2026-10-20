@@ -5,6 +5,41 @@ import { McpError, ErrorCode } from '@modelcontextprotocol/sdk/types.js';
 
 const object = value => value !== null && typeof value === 'object' && !Array.isArray(value);
 const operators = new Set(['equals', 'exists', 'includes']);
+const identifier = name => typeof name === 'string' && /^[A-Za-z][A-Za-z0-9_]{0,63}$/.test(name) && !['__proto__', 'prototype', 'constructor'].includes(name);
+
+// Build fresh own-property objects. Never interpolate code or traverse prototypes.
+function argumentValue(input, variables, validateOnly = false) {
+  let nodes = 0;
+  const walk = (value, depth = 0) => {
+    if (++nodes > 10000 || depth > 32) throw new Error('Argument or capture complexity limit exceeded');
+    if (object(value) && Object.hasOwn(value, '$var')) {
+      if (Object.keys(value).length !== 1 || !identifier(value.$var)) throw new Error('Invalid variable reference');
+      if (!variables.has(value.$var)) throw new Error('Variable must be captured by an earlier step');
+      return validateOnly ? null : structuredClone(variables.get(value.$var));
+    }
+    if (Array.isArray(value)) return value.map(item => walk(item, depth + 1));
+    if (object(value)) return Object.fromEntries(Object.entries(value).map(([key, item]) => [key, walk(item, depth + 1)]));
+    if (value === null || ['string', 'boolean'].includes(typeof value) || (typeof value === 'number' && Number.isFinite(value))) return value;
+    throw new Error('Arguments and captures require JSON values');
+  };
+  const output = walk(input);
+  if (JSON.stringify(output).length > 65536) throw new Error('Argument or capture size limit exceeded');
+  return output;
+}
+
+function capturedValue(value) {
+  // Captured data is literal JSON: a server-supplied $var must never become executable syntax.
+  const copy = structuredClone(value);
+  let nodes = 0;
+  const check = (item, depth = 0) => {
+    if (++nodes > 10000 || depth > 32) throw new Error('Capture complexity limit exceeded');
+    if (item && typeof item === 'object') for (const entry of Object.values(item)) check(entry, depth + 1);
+    else if (item !== null && !['string', 'boolean'].includes(typeof item) && !(typeof item === 'number' && Number.isFinite(item))) throw new Error('Capture requires JSON');
+  };
+  check(copy);
+  if (JSON.stringify(copy).length > 65536) throw new Error('Capture size limit exceeded');
+  return copy;
+}
 
 /** JSON Pointer, including escaped keys. Never traverses inherited properties. */
 export function pointer(value, path) {
@@ -22,10 +57,21 @@ export function validateScenario(scenario) {
   if (!Array.isArray(scenario.steps) || scenario.steps.length < 1 || scenario.steps.length > 1000) throw new Error('Scenario requires 1–1000 steps');
   if (scenario.requiredTools !== undefined && (!Array.isArray(scenario.requiredTools) || scenario.requiredTools.some(t => typeof t !== 'string'))) throw new Error('requiredTools must be tool names');
   const ids = new Set();
+  const variables = new Map();
   for (const step of scenario.steps) {
     if (!object(step) || typeof step.id !== 'string' || !step.id || ids.has(step.id) || typeof step.tool !== 'string' || !step.tool) throw new Error('Steps need unique IDs and tool names');
     ids.add(step.id);
     if (step.arguments !== undefined && !object(step.arguments)) throw new Error('Tool arguments must be an object');
+    argumentValue(step.arguments ?? {}, variables, true);
+    if (step.capture !== undefined) {
+      if (!object(step.capture) || Object.keys(step.capture).length > 32) throw new Error('capture requires at most 32 named JSON Pointers');
+      for (const [name, path] of Object.entries(step.capture)) {
+        if (!identifier(name) || variables.has(name) || variables.size >= 256) throw new Error('Capture names must be unique safe identifiers; maximum 256');
+        if (typeof path !== 'string' || path.length > 4096) throw new Error('Invalid capture pointer');
+        pointer({}, path);
+        variables.set(name, null);
+      }
+    }
     if (step.expectError !== undefined && !['tool', 'protocol'].includes(step.expectError)) throw new Error('expectError must be tool or protocol');
     if (step.assertions !== undefined && !Array.isArray(step.assertions)) throw new Error('assertions must be an array');
     for (const check of step.assertions ?? []) {
@@ -95,13 +141,17 @@ export async function runScenario(scenario, options = {}) {
     report.tools = [...tools].sort();
     report.initialization.protocolVersion = negotiated ?? null;
     if ((scenario.requiredTools ?? []).some(tool => !tools.has(tool))) { report.errors.push('Required tool missing from discovery'); return report; }
+    const variables = new Map();
     for (const step of scenario.steps) {
       const entry = { id: step.id, tool: step.tool, passed: false, outcome: 'not-run', assertions: [] };
       report.steps.push(entry);
       if (!tools.has(step.tool)) { entry.outcome = 'undiscovered-tool'; break; }
+      let args;
+      try { args = argumentValue(step.arguments ?? {}, variables); }
+      catch { entry.outcome = 'variable-error'; break; }
       let result;
       try {
-        result = await client.callTool({ name: step.tool, arguments: step.arguments ?? {} }, undefined, { timeout });
+        result = await client.callTool({ name: step.tool, arguments: args }, undefined, { timeout });
         entry.outcome = result.isError ? 'tool-error' : 'success';
       } catch (error) {
         // Only MCP JSON-RPC errors count as expected protocol errors; timeouts/network failures never do.
@@ -115,6 +165,17 @@ export async function runScenario(scenario, options = {}) {
           if (!passed) entry.passed = false;
         }
       } else if (step.assertions?.length) entry.passed = false;
+      if (entry.passed && step.capture) {
+        try {
+          const captured = [];
+          for (const [name, path] of Object.entries(step.capture)) {
+            const match = pointer(result, path);
+            if (!match.found) throw new Error('Capture pointer missing');
+            captured.push([name, capturedValue(match.value)]);
+          }
+          for (const [name, value] of captured) variables.set(name, value);
+        } catch { entry.outcome = 'capture-error'; entry.passed = false; }
+      }
       if (!entry.passed) break; // Stateful scenarios cannot safely continue after an unexpected transition.
     }
     report.passed = report.steps.length === scenario.steps.length && report.steps.every(step => step.passed);

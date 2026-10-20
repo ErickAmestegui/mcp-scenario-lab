@@ -1,0 +1,60 @@
+{
+  "formatVersion": 1,
+  "scenario": "Inventory live-result capture and reuse",
+  "startedAt": "2026-10-20T03:11:06.486Z",
+  "endpoint": "http://127.0.0.1:58947/mcp",
+  "passed": true,
+  "initialization": {
+    "protocolVersion": "2025-11-25",
+    "server": {
+      "name": "scenario-lab-inventory-fixture",
+      "version": "0.1.0"
+    },
+    "transport": "Streamable HTTP"
+  },
+  "tools": [
+    "fixture_echo",
+    "fixture_slow",
+    "inventory_read",
+    "inventory_restock",
+    "inventory_take"
+  ],
+  "steps": [
+    {
+      "id": "capture-current-stock",
+      "tool": "inventory_read",
+      "passed": true,
+      "outcome": "success",
+      "assertions": []
+    },
+    {
+      "id": "take-current-stock",
+      "tool": "inventory_take",
+      "passed": true,
+      "outcome": "success",
+      "assertions": [
+        {
+          "path": "/structuredContent/quantity",
+          "op": "equals",
+          "passed": true
+        }
+      ]
+    },
+    {
+      "id": "restore-original-stock",
+      "tool": "inventory_restock",
+      "passed": true,
+      "outcome": "success",
+      "assertions": [
+        {
+          "path": "/structuredContent/quantity",
+          "op": "equals",
+          "passed": true
+        }
+      ]
+    }
+  ],
+  "cleanup": "session-terminated",
+  "errors": [],
+  "finishedAt": "2026-10-20T03:11:06.598Z"
+}

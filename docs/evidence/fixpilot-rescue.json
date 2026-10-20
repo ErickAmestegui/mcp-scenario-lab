@@ -1,0 +1,302 @@
+{
+  "formatVersion": 1,
+  "scenario": "FixPilot Rescue Intelligence: preview, compare, explicitly apply, partially recover",
+  "startedAt": "2026-10-20T03:16:29.725Z",
+  "endpoint": "http://127.0.0.1:3101/mcp",
+  "passed": true,
+  "initialization": {
+    "protocolVersion": "2025-11-25",
+    "server": {
+      "name": "fixpilot-x",
+      "version": "1.0.0"
+    },
+    "transport": "Streamable HTTP"
+  },
+  "tools": [
+    "apply_scenario",
+    "compare_scenarios",
+    "complete_step",
+    "explain_blockage",
+    "explain_part_impact",
+    "explain_recovery",
+    "focus_3d_part",
+    "get_assembly_state",
+    "get_available_steps",
+    "get_safety_requirements",
+    "inspect_part",
+    "list_parts",
+    "load_assembly",
+    "mark_part_missing",
+    "preview_scenario",
+    "recalculate_plan",
+    "restore_part",
+    "restore_progress",
+    "save_progress",
+    "select_step",
+    "set_tool_available",
+    "undo_step"
+  ],
+  "steps": [
+    {
+      "id": "load-table",
+      "tool": "load_assembly",
+      "passed": true,
+      "outcome": "success",
+      "assertions": [
+        {
+          "path": "/structuredContent/state/completed",
+          "op": "equals",
+          "passed": true
+        }
+      ]
+    },
+    {
+      "id": "confirm-base",
+      "tool": "complete_step",
+      "passed": true,
+      "outcome": "success",
+      "assertions": []
+    },
+    {
+      "id": "confirm-panels",
+      "tool": "complete_step",
+      "passed": true,
+      "outcome": "success",
+      "assertions": [
+        {
+          "path": "/structuredContent/state/completed",
+          "op": "equals",
+          "passed": true
+        }
+      ]
+    },
+    {
+      "id": "preview-double-loss",
+      "tool": "preview_scenario",
+      "passed": true,
+      "outcome": "success",
+      "assertions": [
+        {
+          "path": "/structuredContent/state/missing",
+          "op": "equals",
+          "passed": true
+        },
+        {
+          "path": "/structuredContent/state/missingTools",
+          "op": "equals",
+          "passed": true
+        },
+        {
+          "path": "/structuredContent/state/completed",
+          "op": "equals",
+          "passed": true
+        },
+        {
+          "path": "/structuredContent/data/hypothetical/missing",
+          "op": "equals",
+          "passed": true
+        },
+        {
+          "path": "/structuredContent/data/hypothetical/missingTools",
+          "op": "equals",
+          "passed": true
+        },
+        {
+          "path": "/structuredContent/data/available",
+          "op": "equals",
+          "passed": true
+        },
+        {
+          "path": "/structuredContent/data/blocked",
+          "op": "equals",
+          "passed": true
+        }
+      ]
+    },
+    {
+      "id": "compare-independent-scenarios",
+      "tool": "compare_scenarios",
+      "passed": true,
+      "outcome": "success",
+      "assertions": [
+        {
+          "path": "/structuredContent/state/missing",
+          "op": "equals",
+          "passed": true
+        },
+        {
+          "path": "/structuredContent/data/scenarios/0/available",
+          "op": "equals",
+          "passed": true
+        },
+        {
+          "path": "/structuredContent/data/scenarios/1/available",
+          "op": "equals",
+          "passed": true
+        },
+        {
+          "path": "/structuredContent/data/pairs/0/onlyLeftAvailable",
+          "op": "equals",
+          "passed": true
+        }
+      ]
+    },
+    {
+      "id": "explicitly-apply-double-loss",
+      "tool": "apply_scenario",
+      "passed": true,
+      "outcome": "success",
+      "assertions": [
+        {
+          "path": "/structuredContent/data/applied",
+          "op": "equals",
+          "passed": true
+        },
+        {
+          "path": "/structuredContent/state/completed",
+          "op": "equals",
+          "passed": true
+        }
+      ]
+    },
+    {
+      "id": "explain-resource-recovery",
+      "tool": "explain_recovery",
+      "passed": true,
+      "outcome": "success",
+      "assertions": [
+        {
+          "path": "/structuredContent/data/resources",
+          "op": "includes",
+          "passed": true
+        },
+        {
+          "path": "/structuredContent/data/resources",
+          "op": "includes",
+          "passed": true
+        },
+        {
+          "path": "/structuredContent/data/requiresHumanVerification",
+          "op": "equals",
+          "passed": true
+        }
+      ]
+    },
+    {
+      "id": "preview-partial-recovery",
+      "tool": "preview_scenario",
+      "passed": true,
+      "outcome": "success",
+      "assertions": [
+        {
+          "path": "/structuredContent/state/missing",
+          "op": "equals",
+          "passed": true
+        },
+        {
+          "path": "/structuredContent/data/hypothetical/missing",
+          "op": "equals",
+          "passed": true
+        },
+        {
+          "path": "/structuredContent/data/hypothetical/missingTools",
+          "op": "equals",
+          "passed": true
+        },
+        {
+          "path": "/structuredContent/data/available",
+          "op": "equals",
+          "passed": true
+        }
+      ]
+    },
+    {
+      "id": "explicitly-apply-partial-recovery",
+      "tool": "apply_scenario",
+      "passed": true,
+      "outcome": "success",
+      "assertions": [
+        {
+          "path": "/structuredContent/state/missing",
+          "op": "equals",
+          "passed": true
+        },
+        {
+          "path": "/structuredContent/state/missingTools",
+          "op": "equals",
+          "passed": true
+        }
+      ]
+    },
+    {
+      "id": "independent-feet-confirmation",
+      "tool": "complete_step",
+      "passed": true,
+      "outcome": "success",
+      "assertions": [
+        {
+          "path": "/structuredContent/state/completed",
+          "op": "equals",
+          "passed": true
+        }
+      ]
+    },
+    {
+      "id": "preview-tool-recovery",
+      "tool": "preview_scenario",
+      "passed": true,
+      "outcome": "success",
+      "assertions": [
+        {
+          "path": "/structuredContent/state/missingTools",
+          "op": "equals",
+          "passed": true
+        },
+        {
+          "path": "/structuredContent/data/available",
+          "op": "equals",
+          "passed": true
+        }
+      ]
+    },
+    {
+      "id": "explicitly-apply-tool-recovery",
+      "tool": "apply_scenario",
+      "passed": true,
+      "outcome": "success",
+      "assertions": [
+        {
+          "path": "/structuredContent/data/applied",
+          "op": "equals",
+          "passed": true
+        }
+      ]
+    },
+    {
+      "id": "retained-progress-and-inventory",
+      "tool": "get_assembly_state",
+      "passed": true,
+      "outcome": "success",
+      "assertions": [
+        {
+          "path": "/structuredContent/state/completed",
+          "op": "equals",
+          "passed": true
+        },
+        {
+          "path": "/structuredContent/state/missing",
+          "op": "equals",
+          "passed": true
+        },
+        {
+          "path": "/structuredContent/state/missingTools",
+          "op": "equals",
+          "passed": true
+        }
+      ]
+    }
+  ],
+  "cleanup": "session-terminated",
+  "errors": [],
+  "finishedAt": "2026-10-20T03:16:29.933Z"
+}

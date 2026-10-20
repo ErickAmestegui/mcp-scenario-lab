@@ -67,6 +67,23 @@ Optionally `npm link` installs `mcp-scenario-lab` as a local command. This repos
 
 All assertions are exact and deterministic. Steps run sequentially in one initialized session. The first unexpected outcome stops the sequence, preserving the failure point instead of sending potentially unsafe dependent mutations. A final read call is the way to check that earlier state persisted in that session. A required tool absent from discovery fails before any calls. Tool discovery follows pagination with loop protection.
 
+### Capture a live result for a later call
+
+Optional `capture` maps unique variable names to JSON Pointers into the **full tool result**. A later argument containing exactly `{ "$var": "name" }` receives that JSON value. References work inside nested arrays and objects; ordinary strings are never interpolated. For example:
+
+```json
+[
+  { "id": "read", "tool": "inventory_read", "capture": { "stock": "/structuredContent/quantity" } },
+  { "id": "take-current", "tool": "inventory_take", "arguments": { "amount": { "$var": "stock" } } }
+]
+```
+
+Run the complete independent example with `node src/cli.js examples/inventory-capture.json --out reports/inventory-capture` while the fixture is running. This feature is generic: a server's preview token can likewise be captured and supplied to a later explicitly configured apply call. The runner never invents `confirmed: true`; a trusted scenario author must write it deliberately. A token does not replace the server's authorization or stale-state validation.
+
+Names must match `[A-Za-z][A-Za-z0-9_]{0,63}`, excluding reserved prototype names. Names cannot be overwritten. Missing or forward references, ambiguous markers with extra keys, malformed pointers, and duplicate names are rejected before connection. Captures occur only after a step passes; a missing/oversized captured result produces `capture-error`, stops dependent calls, and still attempts normal session cleanup. Server-returned values remain literal data, including any `$var` object inside them. Captures live only within one run and never appear in reports.
+
+Limits: 32 captures per step, 256 per scenario, pointers up to 4096 characters, JSON trees up to 32 levels and 10000 visited nodes per argument/capture validation, and 65536 serialized characters per argument set or captured value. Substituted values are cloned, not evaluated. Reports retain their existing redaction policy; this is not a general secret scanner.
+
 ## Reports and exit codes
 
 Reports contain the negotiated protocol version observed from actual initialization or subsequent SDK headers, server metadata, discovered names, step outcomes, assertion paths and cleanup status. The official SDK performs initialization and protocol negotiation; this runner does not implement a lookalike REST protocol.
@@ -97,6 +114,14 @@ node src/cli.js examples/fixpilot-b7.json --out reports/fixpilot-b7
 
 The example records software confirmations of assembly steps, reports missing B7, checks it remains missing across a separate state read, completes an independent step, and restores B7 without losing confirmations. It does not inspect or certify physical assembly and does not call a native Alexa service.
 
+The optional Rescue Intelligence example requires FixPilot's newer `preview_scenario`, `compare_scenarios`, `explain_recovery`, and `apply_scenario` tools. It will fail discovery against the preserved V2 server without those tools:
+
+```sh
+node src/cli.js examples/fixpilot-rescue.json --out reports/fixpilot-rescue
+```
+
+It compares B7-only loss with B7 plus Allen-key loss, checks that previews leave actual inventory unchanged, captures the live base token, explicitly applies the double loss, explains recovery resources, recovers B7 while the tool remains unavailable, confirms an independent step, and recovers the tool while retaining valid progress. Every `confirmed: true` in this trusted example is an **explicit software test action**, not a human physical assembly assertion. Captured tokens are never written to reports. Existing read tools may add audit entries: place state-reading calls before a fresh preview, because a changed audit/revision intentionally makes the prior token stale.
+
 ## Architecture
 
 `src/cli.js` reads trusted local JSON and writes reports. `src/runner.js` validates the scenario, creates the official SDK client and Streamable HTTP transport, discovers tools, calls them, evaluates JSON Pointer expectations and terminates the session. `examples/fixture-server.js` is an original, independent SDK server with per-session inventory and counter state. Node's built-in test runner exercises real HTTP sessions and failures.
@@ -106,7 +131,7 @@ The example records software confirmations of assembly steps, reports missing B7
 - Tools only: no prompts, resources, OAuth, sampling, elicitation or interactive server requests.
 - State assertions test server-reported data, not an external database or physical world.
 - In-memory fixture state resets between sessions; durable restart persistence is not claimed.
-- No automatic result capture/substitution, parallel execution, retries, rollback or destructive-call confirmation. Scenarios are executable trusted input and can mutate real data.
+- No parallel execution, retries, rollback or interactive destructive-call confirmation. Scenarios are executable trusted input and can mutate real data. Capture/reuse is opt-in and deliberately bounded.
 - No process-level signal recovery guarantee. A killed process may leave the server session open until its server-side expiry.
 - Per-operation timeouts (1–120000 ms), not a total scenario deadline. At most 1000 steps and 101 discovery pages.
 - Reports are intentionally redacted and cannot fully reproduce raw server responses. Keep detailed debug traces private using your own tooling.
@@ -125,3 +150,7 @@ On October 19, 2026, all **15 automated tests passed** on Windows with Node.js 2
 The [independent inventory report](docs/evidence/inventory.md) records six real calls and negotiated protocol `2025-11-25`. The [optional FixPilot B7 report](docs/evidence/fixpilot-b7.md) records seven real calls against FixPilot X's actual MCP server, including retained confirmations `[1, 2, 6]` after B7 recovery. Both sessions terminated through HTTP DELETE. JSON equivalents are stored beside the Markdown reports. Random loopback ports in those historical reports identify the test sessions and are not hosted endpoints.
 
 Tests cover real HTTP initialization/discovery with both JSON and SSE responses, stock mutation, expected tool and JSON-RPC errors, incorrect-state failures, stop-on-first-failure, missing discovery entries, session isolation, timeout classification, unavailable endpoints, HTTP DELETE failure, allowed HTTP 405 termination policy, and CLI report output. SSE bodies are consumed only by the official SDK; the runner observes the negotiated protocol from subsequent SDK request headers. The fixture models in-session retention; durable restart persistence and native Alexa access were not tested or claimed.
+
+The subsequent `rescue-scenarios` development branch adds **six tests** (21 total, locally passed) for generic live-result capture/reuse, missing/oversized-capture fail-stop, validation/bounds, nested structured arguments, literal server data, prototype safety, session isolation, and report redaction. The historical `v0.1.0` reports and 15-test checkpoint above are unchanged.
+
+The new [independent capture report](docs/evidence/inventory-capture.md) passed **3/3 real calls**. The [Rescue Intelligence report](docs/evidence/fixpilot-rescue.md) passed **13/13 real calls** against FixPilot's actual 22-tool MCP server. It verifies nonmutating double-loss preview, comparison, live token capture and explicit software apply, partial recovery while the Allen key remains unavailable, an independent confirmation, and recovery retaining confirmations `[1, 2, 6]`. Both runs negotiated `2025-11-25` and terminated their sessions through HTTP DELETE. JSON reports sit beside their Markdown equivalents; captured values, tokens, arguments and raw results are omitted. This local integration evidence does not demonstrate remote hosting, physical assembly verification, or a native Alexa connection. New branch CI results are not claimed until independently observed.
