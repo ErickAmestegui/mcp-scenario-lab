@@ -8,6 +8,17 @@ This is an independent MIT open source contribution developed alongside [FixPilo
 
 Public repository: https://github.com/ErickAmestegui/mcp-scenario-lab . Implementation checkpoint: [`v0.1.0`](https://github.com/ErickAmestegui/mcp-scenario-lab/tree/v0.1.0). The [Ubuntu / Node 22 CI run](https://github.com/ErickAmestegui/mcp-scenario-lab/actions/runs/39310007278) passed at that checkpoint. [Open Source submission fields](docs/OPEN_SOURCE_SUBMISSION.md) describe the separate contribution and its limits; they do not represent a submitted Devpost entry.
 
+## Rescue capture/reuse upgrade
+
+Clone `rescue-scenarios` explicitly to reproduce the new examples; default `main` remains the stable v0.1.0 release:
+
+```sh
+git clone --branch rescue-scenarios https://github.com/ErickAmestegui/mcp-scenario-lab.git
+cd mcp-scenario-lab
+```
+
+The [Node 22 Ubuntu CI run for the upgrade](https://github.com/ErickAmestegui/mcp-scenario-lab/actions/runs/39365301639) passed all 21 tests at `7fedc65`.
+
 ## Quick start
 
 Requires Node.js 22+ and npm. No account, API key or paid service.
@@ -153,4 +164,4 @@ Tests cover real HTTP initialization/discovery with both JSON and SSE responses,
 
 The subsequent `rescue-scenarios` development branch adds **six tests** (21 total, locally passed) for generic live-result capture/reuse, missing/oversized-capture fail-stop, validation/bounds, nested structured arguments, literal server data, prototype safety, session isolation, and report redaction. The historical `v0.1.0` reports and 15-test checkpoint above are unchanged.
 
-The new [independent capture report](docs/evidence/inventory-capture.md) passed **3/3 real calls**. The [Rescue Intelligence report](docs/evidence/fixpilot-rescue.md) passed **13/13 real calls** against FixPilot's actual 22-tool MCP server. It verifies nonmutating double-loss preview, comparison, live token capture and explicit software apply, partial recovery while the Allen key remains unavailable, an independent confirmation, and recovery retaining confirmations `[1, 2, 6]`. Both runs negotiated `2025-11-25` and terminated their sessions through HTTP DELETE. JSON reports sit beside their Markdown equivalents; captured values, tokens, arguments and raw results are omitted. This local integration evidence does not demonstrate remote hosting, physical assembly verification, or a native Alexa connection. New branch CI results are not claimed until independently observed.
+The new [independent capture report](docs/evidence/inventory-capture.md) passed **3/3 real calls**. The [Rescue Intelligence report](docs/evidence/fixpilot-rescue.md) passed **13/13 real calls** against FixPilot's actual 22-tool MCP server. It verifies nonmutating double-loss preview, comparison, live token capture and explicit software apply, partial recovery while the Allen key remains unavailable, an independent confirmation, and recovery retaining confirmations `[1, 2, 6]`. Both runs negotiated `2025-11-25` and terminated their sessions through HTTP DELETE. JSON reports sit beside their Markdown equivalents; captured values, tokens, arguments and raw results are omitted. This local integration evidence does not demonstrate remote hosting, physical assembly verification, or a native Alexa connection. The published branch CI result is linked above; local reports remain distinct from CI evidence.
